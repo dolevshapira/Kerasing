@@ -27,3 +27,12 @@ Add custom callbacks to this package.
 
 # Metrics
 Add custom metrics to this package.
+
+# Visualization
+Used for visualizing the data generated either via
+* Pre-processed data.
+* Data augmentation.
+* Normalized data.
+* Model related statistics and plots.
+* Model outputs.
+* Post-processed model outputs.
