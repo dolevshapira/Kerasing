@@ -1,5 +1,6 @@
 import numpy as np
 from keras.callbacks import Callback
+from metrics.confusion_cell import confusion_matrix_cell
 import keras.backend as K
 import tensorflow as tf
 
@@ -29,7 +30,6 @@ class ConfusionMatrix(Callback):
         :return:
         """
         self.matrix = np.zeros((self.num_labels,self.num_labels))
-        self.total_X = 0
 
     def on_epoch_end(self, epoch, logs=None):
         """
@@ -42,17 +42,15 @@ class ConfusionMatrix(Callback):
         """
         #Save the confusion matrix for training.
         if self.matrix_saver is not None:
-            self.matrix_saver((self.matrix/self.total_X))
+            self.matrix_saver(self.matrix/self.matrix.sum())
 
         # Saves the confusion matrix for validation.
         if self.val_matrix_saver is not None:
             self.matrix = np.zeros((self.num_labels,self.num_labels))
             self.collect_values(logs,self.val_metric_prefix)
-            self.val_matrix_saver((self.matrix / self.matrix.sum()))
+            self.val_matrix_saver(self.matrix/self.matrix.sum())
 
     def on_batch_end(self, batch, logs=None):
-        self.total_X += logs['size']
-
         # Collect value for each of the confusion matrix cells
         self.collect_values(logs,self.metric_prefix)
 
@@ -65,15 +63,15 @@ class ConfusionMatrix(Callback):
         """
         for i in range(self.num_labels):
             for j in range(self.num_labels):
-                self.collect_value(logs,self.metric_prefix,i,j)
+                self.collect_value(logs,metric_prefix,i,j)
 
     def collect_value(self,logs,metric_prefix,i,j):
         """
         Collects from logs the value for cell (i,j) in the confusion matrix
-        :param logs:
-        :param metric_prefix:
-        :param i:
-        :param j:
+        :param logs: Keras logs dictionary object
+        :param metric_prefix: The prefix of the metric collected up to the cell number
+        :param i: true class
+        :param j: predicted class
         :return:
         """
         metric_name = metric_prefix + str(i*self.num_labels + j + 1)
@@ -84,33 +82,4 @@ class ConfusionMatrix(Callback):
         Creates all metrics needed for creating the confusion matrix
         :return: A list of metrics representing the confusion matrix cells
         """
-        def confusion_matrix_cell(true_class, pred_class):
-            """
-            Creates a metric that collects the value for a single cells of the confusion matrix
-            :param true_class:
-            :param pred_class:
-            :return: Keras metric
-            """
-            def confusion(y_true, y_pred):
-                """
-                Collects the samples predicted as pred_class where its true class is true_class
-                :param y_true:
-                :param y_pred:
-                :return: the number of predictions as mentioned above
-                """
-                # Calculate the label from one-hot encoding
-                pred_class_label = K.argmax(y_pred, axis=-1)
-                true_class_label = K.argmax(y_true, axis=-1)
-
-                # Create a mask representing where the prediction is pred_class and the true class is true_class
-                pred_mask = K.equal(pred_class_label, pred_class)
-                true_mask = K.equal(true_class_label, true_class)
-                mask = tf.logical_and(pred_mask, true_mask)
-
-                # Get the total number of occurences
-                occurences = K.sum(K.cast(mask, 'int32'), axis=0)
-                return occurences
-
-            return confusion
-
         return [confusion_matrix_cell(i, j) for i in range(self.num_labels) for j in range(self.num_labels)]
