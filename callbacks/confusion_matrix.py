@@ -1,8 +1,6 @@
 import numpy as np
 from keras.callbacks import Callback
 from metrics.confusion_cell import confusion_matrix_cell
-import keras.backend as K
-import tensorflow as tf
 
 class ConfusionMatrix(Callback):
     """
